@@ -1,0 +1,33 @@
+<div class="row" id="druid" ng-controller="druid">
+    <div class="cell col-md-8">
+        <h3>Druid actions:</h3>
+        <hr/>
+        <div class="panel panel-default">
+            <div class="panel-heading">Tranquility <div ng-class=""></div></div>
+            <div class="panel-body">
+                <div class="form-inline form-group" style="font-size:14px;">
+                    <label>Name: <input type="text" ng-model="uniqueSuffix" class="form-control mb-2 mr-sm-2 mb-sm-0 ng-pristine ng-untouched ng-valid ng-empty" id="inlineFormInput"></label>
+                    <label>Metrics: <input type="url" ng-model="configUrl" class="form-control mb-2 mr-sm-2 mb-sm-0" id="inlineFormInput" placeholder="Metrics url"></label>
+                    <button type="submit" class="btn btn-primary fa fa-rocket" ng-disabled="!configUrl" ng-click="launchTranquility(configUrl, isServer, uniqueSuffix)"> Launch task</button>
+                </div>
+                <label ng-show="dnsName" style="color:blue;font-size:14px;"> DNS name: {{dnsName}}</label>
+            </div>
+        </div>
+        <br/>
+        <div class="panel panel-default">
+            <div class="panel-heading">Broker <div ng-class=""></div></div>
+            <div class="panel-body">
+                <div style="font-size:14px;">
+                    <input type="checkbox" ng-model="specific" /> Serve specific tiers
+                    <ul>
+                        <li ng-show="specific" ng-repeat="tier in ['hot', 'default', 'all']">
+                            <label><input type="checkbox" value=""> {{tier}}</label>
+                        </li>
+                    </ul>
+
+                    <button disabled type="submit" class="btn btn-primary fa fa-rocket"> Launch task</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

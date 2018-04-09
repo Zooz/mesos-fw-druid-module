@@ -1,51 +1,47 @@
 /*jslint bitwise: true this node es6*/
 "use strict";
 // Internal modules
-const fs = require("fs");
-
-var AuditHelper = require("./lib/auditHelper");
+var path = require("path");
 
 // NPM modules
 var express = require("express");
-var TaskHealthHelper;
-// Instantiate the mesos-framework module related objects
-if (fs.existsSync("./mesos-framework")) {
-    TaskHealthHelper = require("../mesos-framework").TaskHealthHelper;
-} else {
-    TaskHealthHelper = require("mesos-framework").TaskHealthHelper;
-}
+var TaskHealthHelper = require("../framework-core").TaskHealthHelper;
 
 module.exports = function (scheduler, frameworkConfiguration, route, app, restartHelper) {
-    var healthCheck;
-    var TASK_NAME_FILTER = "^vault-[0-9]+$";
 
-    if (Boolean(process.env.AUDIT)) {
-        var auditHelper;
-        auditHelper = new AuditHelper(scheduler);
-        scheduler.logger.info("Enabling audit");
-        auditHelper.enableAudit();
-    }
+    var healthCheck;
+    var TASK_NAME_FILTER = "^.*$";
 
     healthCheck = new TaskHealthHelper(scheduler, {
         "taskNameFilter": TASK_NAME_FILTER,
-        url: "/v1/sys/health?standbyok"
+        url: "/status",
+        interval: parseInt(process.env.TASK_HEALTH_INTERVAL),
+        "logging": {
+            "path": process.env.MESOS_SANDBOX + "/logs/",
+            "fileName": process.env.FRAMEWORK_NAME + ".log",
+            "level": app.get("logLevel")
+        }
     });
 
     frameworkConfiguration.healthCheck = true;
 
     if (restartHelper) {
-        restartHelper.setUseHealthcheck(true);
+        restartHelper.setHealthCheck({filter: "^overlord-[0-9]+$", name: "healthy"});
+        restartHelper.setHealthCheck({filter: "^historical-[0-9]+$", name: "healthy"});
+        restartHelper.setHealthCheck({filter: "^coordinator-[0-9]+$", name: "healthy"});
+        restartHelper.setHealthCheck({filter: "^broker-[0-9]+$", name: "healthy"});
+        restartHelper.setHealthCheck({filter: "^middle-manager-[0-9]+$", name: "healthy"});
+        restartHelper.setHealthCheck({filter: "^tranquility.+$", name: "healthy"});
     }
 
-    scheduler.on("task_unhealthy", function (task) {
+    frameworkConfiguration.druidHelper = true;
+    frameworkConfiguration.moduleList.push("druid");
 
-    });
+    app.use("/partials/druid.html", express.static(path.join(__dirname, "partials/druid.html")));
+    app.use("/app/druidController.js", express.static(path.join(__dirname, "angular-app/druidController.js")));
+    app.use("/app/druidServices.js", express.static(path.join(__dirname, "angular-app/druidServices.js")));
 
-    app.use("/partials/placeholder.html", express.static("./druid-module/partials/placeholder.html"));
-    app.use("/app/vaultController.js", express.static("./druid-module/angular-app/druidController.js"));
-    app.use("/app/vaultServices.js", express.static("./druid-module/angular-app/druidServices.js"));
-
-    app.use("/", function (req, res, next) {
+    app.use("/", function (req, ignore, next) {
         if (!req.modules) {
             req.modules = {"menus": [], "files": []};
         }
@@ -56,15 +52,42 @@ module.exports = function (scheduler, frameworkConfiguration, route, app, restar
             req.modules.files = [];
         }
 
-        req.modules.files.push("app/vaultController.js");
-        req.modules.files.push("app/vaultServices.js");
+        req.staticOverviewCells = [{"name": "DEEP STORAGE", "value": "S3"}, {"name": "MYSQL", "value": "52.29.170.53:3306"}];
+
+        req.modules.menus.push("<li class=\"sidebar-list\" ng-show=\"configuration.druidHelper\"><a href=\"#/module/druid\" ng-class=\"{active: $route.current.activeTab == 'druid'}\">Druid<span class=\"menu-icon fa fa-cubes\"></span></a></li>");
+        req.modules.files.push("app/druidController.js");
+        req.modules.files.push("app/druidServices.js");
+        next();
+    });
+
+    app.use("/partials/tasks.html", function (req, ignore, next) {
+        if (!req.modules) {
+            req.modules = {"taskFields": [], "taskHeaders": [], "rollingRestartFields": [], "taskControllers": [], "killAllString": ""};
+        }
+        if (!req.modules.taskFields) {
+            req.modules.taskFields = [];
+        }
+        if (!req.modules.taskHeaders) {
+            req.modules.taskHeaders = [];
+        }
+        if (!req.modules.taskControllers) {
+            req.modules.taskControllers = [];
+        }
+        if (!req.modules.rollingRestartFields) {
+            req.modules.rollingRestartFields = [];
+        }
+
+        req.modules.rollingRestartFields.push("ng-disabled=\"true\"");
         next();
     });
 
     require("./druidRoutes")(route);
 
-    function task_start_handle(task) {
-    }
+    var task_start_handle = function (task) {
+        setTimeout(function () {
+            healthCheck.checkInstance(task);
+        }, 5000);
+    };
 
     scheduler.on("task_launched", task_start_handle);
 
