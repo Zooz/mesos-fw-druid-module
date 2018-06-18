@@ -1,5 +1,5 @@
 # mesos-fw-druid-module
-Druid module for mesos-framework-core
+Druid module for mesos-framework-core (https://github.com/Zooz/mesos-framework-core)
 
 This plugin should be fetched by framework-core deployment to create a druid mesos framework.
 
