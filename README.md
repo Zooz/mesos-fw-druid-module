@@ -1,5 +1,5 @@
 # mesos-fw-druid-module
-Druid module for mesos-framework-core
+Druid module for mesos-framework-core (https://github.com/Zooz/mesos-framework-core)
 
 This plugin should be fetched by framework-core deployment to create a druid mesos framework.
 
@@ -8,6 +8,9 @@ A framework for managing a druid cluster. The druid cluster components are docke
 
 # Future plans:
 - Upgrade druid cluster (optionally remove tranquility).
+
+# Screenshot
+![](https://github.com/Zooz/mesos-fw-druid-module/blob/update-documentation/screenshots/Screen%20Shot%202018-03-29%20at%2018.38.29.png)
 
 Launch tranquility:
 
